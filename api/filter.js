@@ -6,9 +6,9 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Environment variables लें (Vercel पर set करें)
+    // Environment variables लें
     const token = process.env.APIFY_TOKEN;
-    const actorId = 'wilcode/whatsapp-number-filter-pro'; // आपका चुना हुआ actor
+    const actorId = 'wilcode/whatsapp-number-filter-pro';
 
     if (!token) {
         return res.status(500).json({ error: 'APIFY_TOKEN environment variable not set' });
@@ -23,28 +23,26 @@ export default async function handler(req, res) {
     // Apify client initialize करें
     const client = new ApifyClient({ token });
 
-    // Actor के लिए input तैयार करें – WhatsApp Number Filter Pro के schema के अनुसार [citation:1]
+    // Actor के लिए input तैयार करें
     const actorInput = {
-        phoneNumberList: phoneNumbers,  // यह फील्ड जरूरी है
-        sessionId: `whatsapp-filter-session-${Date.now()}`, // हर बार नया session बनाएं (पुराने से बचने के लिए)
+        phoneNumberList: phoneNumbers,
+        sessionId: `whatsapp-filter-session-${Date.now()}`,
         proxySettings: {
             useApifyProxy: true,
-            apifyProxyGroups: ["RESIDENTIAL"], // Residential proxy जरूरी है [citation:1]
-            apifyProxyCountry: "IN" // भारत के proxy से बेहतर रिजल्ट मिलेगा
+            apifyProxyGroups: ["RESIDENTIAL"],
+            apifyProxyCountry: "IN"
         }
     };
 
     try {
-        // Actor को call करें और finish होने तक wait करें
+        // Actor को call करें
         const run = await client.actor(actorId).call(actorInput);
-
-        // Result default dataset से fetch करें
         const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
         return res.status(200).json({
             success: true,
             runId: run.id,
-            result: items, // इसमें हर नंबर की जानकारी होगी (valid/invalid)
+            result: items,
         });
     } catch (error) {
         console.error('Apify error:', error);
