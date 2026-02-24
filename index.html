@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Number Filter Pro</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 2rem auto; padding: 1rem; background: #f0f8ff; }
+        textarea { width: 100%; padding: 0.5rem; margin: 0.5rem 0; border: 1px solid #25D366; border-radius: 5px; }
+        button { padding: 0.7rem 2rem; background: #25D366; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1rem; }
+        button:hover { background: #128C7E; }
+        .status { margin-top: 1rem; white-space: pre-wrap; background: #fff; padding: 1rem; border-radius: 5px; border: 1px solid #ddd; max-height: 400px; overflow: auto; }
+        .error { color: red; }
+        .valid { color: green; font-weight: bold; }
+        .invalid { color: red; }
+        h1 { color: #075e54; }
+        .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 0.5rem; margin: 1rem 0; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <h1>📱 WhatsApp नंबर फ़िल्टर प्रो</h1>
+    <div class="note">
+        <strong>⚠️ जरूरी:</strong> हर नंबर <strong>देश कोड के साथ</strong> डालें।<br>
+        जैसे: +9198xxxxxxxx या 9198xxxxxxxx (बिना + के भी चलेगा)
+    </div>
+    <form id="filterForm">
+        <label for="numbers">📞 फोन नंबर (एक लाइन में एक):</label>
+        <textarea id="numbers" rows="8" placeholder="+9198xxxxxxxx&#10;+9199xxxxxxxx&#10;+9176xxxxxxxx" required></textarea>
+
+        <button type="submit">✅ WhatsApp नंबर चेक करें</button>
+    </form>
+
+    <div class="status" id="status">
+        <strong>रिजल्ट यहाँ दिखेगा...</strong>
+    </div>
+
+    <script>
+        document.getElementById('filterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = '⏳ नंबर चेक हो रहे हैं... इसमें 1-2 मिनट लग सकते हैं...';
+
+            const numbersRaw = document.getElementById('numbers').value;
+            const phoneNumbers = numbersRaw.split('\n')
+                .map(n => n.trim())
+                .filter(n => n.length > 0);
+
+            if (phoneNumbers.length === 0) {
+                statusEl.innerHTML = '<span class="error">❌ कोई नंबर नहीं डाला गया</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/filter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumbers })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // रिजल्ट को अच्छे से दिखाएं
+                    let resultHtml = `<strong>✅ सफल!</strong><br>Run ID: ${data.runId}<br><br>`;
+                    
+                    if (data.result && data.result.length > 0) {
+                        resultHtml += '<strong>📊 नंबर की जानकारी:</strong><br>';
+                        
+                        // वैलिड और इनवैलिड नंबर गिनें
+                        const validNumbers = data.result.filter(item => item.valid === true);
+                        const invalidNumbers = data.result.filter(item => item.valid === false);
+                        
+                        resultHtml += `<span class="valid">✅ वैलिड नंबर: ${validNumbers.length}</span><br>`;
+                        resultHtml += `<span class="invalid">❌ इनवैलिड नंबर: ${invalidNumbers.length}</span><br><br>`;
+                        
+                        // सारे नंबर दिखाएं
+                        resultHtml += '<table style="width:100%; border-collapse: collapse;">';
+                        resultHtml += '<tr style="background:#f0f0f0;"><th>नंबर</th><th>स्टेटस</th><th>डिटेल</th></tr>';
+                        
+                        data.result.forEach(item => {
+                            const statusClass = item.valid ? 'valid' : 'invalid';
+                            const statusText = item.valid ? '✅ वैलिड' : '❌ इनवैलिड';
+                            const detail = item.details || (item.valid ? 'WhatsApp पर है' : 'WhatsApp पर नहीं है');
+                            
+                            resultHtml += `<tr style="border-bottom:1px solid #ddd;">
+                                <td>${item.number || item.phoneNumber || '-'}</td>
+                                <td class="${statusClass}">${statusText}</td>
+                                <td>${detail}</td>
+                            </tr>`;
+                        });
+                        
+                        resultHtml += '</table>';
+                    } else {
+                        resultHtml += 'कोई रिजल्ट नहीं मिला।';
+                    }
+                    
+                    statusEl.innerHTML = resultHtml;
+                } else {
+                    statusEl.innerHTML = `<span class="error">❌ त्रुटि: ${data.error}</span>`;
+                }
+            } catch (err) {
+                statusEl.innerHTML = `<span class="error">❌ नेटवर्क त्रुटि: ${err.message}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>
