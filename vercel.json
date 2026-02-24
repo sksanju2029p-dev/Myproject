@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/filter.js": {
+      "maxDuration": 60
+    }
+  }
+}
