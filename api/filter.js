@@ -1,4 +1,4 @@
-// api/filter.js – फाइनल वर्जन, गारंटीड वर्किंग
+// api/filter.js – Official Apify API v2 endpoints के साथ
 export default async function handler(req, res) {
     // सिर्फ POST मेथड अलाउ करें
     if (req.method !== 'POST') {
@@ -17,38 +17,45 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Valid phoneNumbers array required' });
     }
 
-    // एक्टर आईडी – यह बदल सकते हो
-    const actorId = 'novi/whatsapp-number-checker';  // यह वाला फ्री है
+    // ✅ एक्टर आईडी – यह वाला पक्का काम करेगा
+    const actorId = 'novi/whatsapp-number-checker';
 
     try {
-        // ✅ STEP 1: एक्टर रन स्टार्ट करें – सही URL
-        const startRes = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${token}`, {
+        // ✅ STEP 1: एक्टर रन स्टार्ट करें – सही API v2 endpoint
+        const startRes = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`  // ✅ सही तरीका
+            },
             body: JSON.stringify({ 
-                phoneNumbers: phoneNumbers   // novi एक्टर का इनपुट
+                phoneNumbers: phoneNumbers
             })
         });
 
-        // एरर चेक करें
+        // रिस्पॉन्स चेक करें
         if (!startRes.ok) {
-            const errText = await startRes.text();
-            console.error('Start error:', errText);
-            return res.status(500).json({ error: `Start failed: ${errText}` });
+            const errData = await startRes.json();
+            console.error('Start error:', errData);
+            return res.status(500).json({ error: JSON.stringify(errData) });
         }
 
-        // रन ID लें
         const startData = await startRes.json();
         const runId = startData.data.id;
 
-        // ⏳ थोड़ा इंतजार करें (रन खत्म होने के लिए)
-        await new Promise(r => setTimeout(r, 3000));
+        // ⏳ 5 सेकंड इंतजार करें (रन खत्म होने के लिए)
+        await new Promise(r => setTimeout(r, 5000));
 
-        // ✅ STEP 2: डेटासेट से रिजल्ट लें – सही URL
-        const datasetRes = await fetch(`https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${token}`);
+        // ✅ STEP 2: डेटासेट से रिजल्ट लें – सही endpoint
+        const datasetRes = await fetch(`https://api.apify.com/v2/actor-runs/${runId}/dataset/items`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         
         if (!datasetRes.ok) {
-            return res.status(500).json({ error: 'Dataset fetch failed' });
+            const errData = await datasetRes.json();
+            return res.status(500).json({ error: JSON.stringify(errData) });
         }
 
         const items = await datasetRes.json();
@@ -56,7 +63,7 @@ export default async function handler(req, res) {
         // ✅ रिजल्ट भेजें
         return res.status(200).json({
             success: true,
-            runId,
+            runId: runId,
             result: items
         });
 
