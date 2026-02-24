@@ -1,8 +1,5 @@
 {
   "name": "whatsapp-number-filter-pro",
   "version": "1.0.0",
-  "dependencies": {
-    "apify-client": "^2.7.1",
-    "proxy-agent": "^6.3.0"
-  }
+  "dependencies": {}
 }
